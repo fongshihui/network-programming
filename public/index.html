@@ -3,84 +3,239 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Network Programming - HTTP & Database Server</title>
+  <title>Network Programming - 5-Phase Multi-Tier Architecture</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="badge">Architecture: HTTP &rarr; Thread Pool &rarr; MySQL</div>
+      <div class="header-badges">
+        <span class="badge">Architecture: HTTP &rarr; App &rarr; Redis &rarr; MySQL</span>
+        <span id="tls-badge" class="badge badge-sec">TLS: Standard TCP</span>
+      </div>
       <h1>Network Programming Server</h1>
-      <p class="subtitle">Low-level TCP Socket &bull; Concurrency Pool &bull; Database Integration</p>
+      <p class="subtitle">
+        TCP Sockets &bull; Thread Pool &bull; JWT/RBAC Security &bull; Multi-Tier Caching &bull; DB Pool
+      </p>
     </header>
 
-    <!-- Architecture & Status -->
+    <!-- Phase 4: Authentication & Current Identity -->
+    <section class="card auth-card">
+      <div class="card-header">
+        <h2>🔐 Phase 4: Authentication & Access Control</h2>
+        <div id="auth-status-badge" class="badge-role guest">Role: Guest (Unauthenticated)</div>
+      </div>
+
+      <div class="auth-grid">
+        <!-- Quick Logins -->
+        <div class="auth-col">
+          <h3>Quick Login (Preset Accounts)</h3>
+          <p class="help-text">Click a button to log in with seeded accounts and obtain a signed JWT:</p>
+          <div class="btn-group">
+            <button id="btn-login-admin" class="btn primary">Login as Admin (admin@example.com)</button>
+            <button id="btn-login-user" class="btn secondary">Login as User (alice@example.com)</button>
+            <button id="btn-logout" class="btn delete-btn" style="display: none;">Logout</button>
+          </div>
+        </div>
+
+        <!-- Custom Login / Register Form -->
+        <div class="auth-col">
+          <h3>Custom Login / Register</h3>
+          <form id="auth-form" class="auth-form">
+            <input type="email" id="auth-email" placeholder="Email (e.g. bob@example.com)" required />
+            <input type="password" id="auth-password" placeholder="Password (min 6 chars)" required />
+            <div class="auth-actions">
+              <button type="submit" id="btn-submit-login" class="btn primary">Login</button>
+              <button type="button" id="btn-submit-register" class="btn secondary">Register (Role: User)</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Active JWT Token Display -->
+      <div class="token-display">
+        <label><strong>Current Bearer JWT Token:</strong></label>
+        <div class="token-box">
+          <input type="text" id="jwt-token-input" readonly placeholder="No active token (Acting as Guest)" />
+          <button id="btn-copy-token" class="btn small">Copy Token</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Phase 5: Multi-Tier Caching & Performance Metrics -->
     <section class="card">
-      <h2>Server & Concurrency Metrics</h2>
-      <div class="status-grid">
+      <div class="card-header">
+        <h2>⚡ Phase 5: Multi-Tier Caching (HTTP &rarr; App L1 &rarr; Redis L2 &rarr; DB)</h2>
+        <button id="btn-flush-cache" class="btn warn small">Flush All Caches</button>
+      </div>
+
+      <div class="cache-pipeline">
+        <div class="cache-node">
+          <div class="node-title">1. HTTP Tier</div>
+          <div class="node-desc">ETag / 304 Validation</div>
+          <div id="http-etag-val" class="node-metric">ETag: Active</div>
+        </div>
+        <div class="cache-arrow">&rarr;</div>
+        <div class="cache-node">
+          <div class="node-title">2. L1 App Cache</div>
+          <div class="node-desc">In-Memory TTL Cache</div>
+          <div id="l1-hits" class="node-metric">Hits: 0</div>
+        </div>
+        <div class="cache-arrow">&rarr;</div>
+        <div class="cache-node">
+          <div class="node-title">3. L2 Redis Cache</div>
+          <div id="l2-engine" class="node-desc">Redis Layer</div>
+          <div id="l2-hits" class="node-metric">Hits: 0</div>
+        </div>
+        <div class="cache-arrow">&rarr;</div>
+        <div class="cache-node db-node">
+          <div class="node-title">4. Database Tier</div>
+          <div id="db-engine-name" class="node-desc">MySQL / SQLite</div>
+          <div id="db-queries" class="node-metric">DB Queries: 0</div>
+        </div>
+      </div>
+
+      <div class="status-grid" style="margin-top: 1rem;">
         <div class="status-item">
-          <span class="label">Database Engine</span>
-          <span id="db-engine" class="value online">Loading...</span>
+          <span class="label">Last Query Cache Source</span>
+          <span id="last-cache-source" class="value online">None</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Rate Limit (Window 60s)</span>
+          <span id="rate-limit-info" class="value">60 reqs remaining</span>
         </div>
         <div class="status-item">
           <span class="label">Thread Pool Size</span>
           <span id="pool-workers" class="value">Loading...</span>
         </div>
         <div class="status-item">
-          <span class="label">Processed Requests</span>
+          <span class="label">Processed Total</span>
           <span id="req-count" class="value">Loading...</span>
         </div>
       </div>
-      <div style="margin-top: 1rem; text-align: right;">
-        <button id="btn-refresh-stats" class="btn secondary">Refresh Metrics</button>
-      </div>
     </section>
 
-    <!-- Phase 2: Database Operations (CRUD) -->
+    <!-- Phase 2 & 4: Database Operations (CRUD with Authorization) -->
     <section class="card">
-      <h2>Phase 2: Database Management (Users Table)</h2>
+      <div class="card-header">
+        <h2>👥 Users Management (Authorized Actions)</h2>
+        <span class="help-text">Creation requires JWT; Deletion requires <strong>Admin</strong> role.</span>
+      </div>
+
       <form id="user-form" class="user-form">
-        <input type="text" id="user-name" placeholder="Full Name (e.g. Alice)" required />
-        <input type="email" id="user-email" placeholder="Email (e.g. alice@example.com)" required />
-        <button type="submit" class="btn primary">Add to Database</button>
+        <input type="text" id="user-name" placeholder="Full Name (e.g. Carol White)" required />
+        <input type="email" id="user-email" placeholder="Email (e.g. carol@example.com)" required />
+        <input type="password" id="user-password" placeholder="Password (optional)" />
+        <select id="user-role">
+          <option value="user">Role: User</option>
+          <option value="admin">Role: Admin</option>
+        </select>
+        <button type="submit" class="btn primary">Add User (Auth Required)</button>
       </form>
 
       <div class="users-section">
-        <h3>Current Database Records</h3>
+        <div class="users-header">
+          <h3>Cached Database Records</h3>
+          <button id="btn-refresh-users" class="btn secondary small">Refresh Users List</button>
+        </div>
         <ul id="users-list" class="users-list">
           <li class="empty-state">Loading users...</li>
         </ul>
       </div>
     </section>
 
-    <!-- Phase 3: Concurrency Stress Test -->
+    <!-- Phase 3: Concurrency & Rate Limiting Stress Test -->
     <section class="card">
-      <h2>Phase 3: Concurrency Stress Test</h2>
+      <h2>🚀 Phase 3 & 4: Concurrency & Rate Limit Stress Test</h2>
       <p class="help-text">
-        Fires 20 concurrent HTTP requests simultaneously over TCP to test thread pool concurrency and database throughput.
+        Fires 20 concurrent HTTP requests over TCP to observe thread pooling, L1/L2 cache hits, and rate limiting in real-time.
       </p>
       <div class="btn-group">
-        <button id="btn-load-test" class="btn warn">Run 20 Concurrent Requests</button>
+        <button id="btn-load-test" class="btn warn">Run 20 Concurrent Cache Tests</button>
       </div>
       <div id="test-progress" class="test-progress" style="display: none;">
         <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
         <span id="test-status">Running...</span>
       </div>
-      <pre id="output">Click a button above or submit a form to test the server...</pre>
+      <pre id="output">System ready. Click any action above to test Phase 1 through Phase 5 features...</pre>
     </section>
   </div>
 
   <script>
-    const output = document.getElementById('output');
+    let currentToken = localStorage.getItem('jwt_token') || '';
+    let currentUserRole = localStorage.getItem('jwt_role') || 'guest';
+    let currentEmail = localStorage.getItem('jwt_email') || '';
+    let lastETag = '';
 
-    // Fetch server status
+    const output = document.getElementById('output');
+    const tokenInput = document.getElementById('jwt-token-input');
+    const authStatusBadge = document.getElementById('auth-status-badge');
+    const btnLogout = document.getElementById('btn-logout');
+
+    function updateAuthUI() {
+      tokenInput.value = currentToken;
+      if (currentToken) {
+        authStatusBadge.textContent = `Role: ${currentUserRole.toUpperCase()} (${currentEmail})`;
+        authStatusBadge.className = `badge-role ${currentUserRole}`;
+        btnLogout.style.display = 'inline-block';
+      } else {
+        authStatusBadge.textContent = 'Role: Guest (Unauthenticated)';
+        authStatusBadge.className = 'badge-role guest';
+        btnLogout.style.display = 'none';
+      }
+    }
+
+    function setAuth(token, role, email) {
+      currentToken = token;
+      currentUserRole = role;
+      currentEmail = email;
+      localStorage.setItem('jwt_token', token);
+      localStorage.setItem('jwt_role', role);
+      localStorage.setItem('jwt_email', email);
+      updateAuthUI();
+    }
+
+    function clearAuth() {
+      currentToken = '';
+      currentUserRole = 'guest';
+      currentEmail = '';
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('jwt_role');
+      localStorage.removeItem('jwt_email');
+      updateAuthUI();
+    }
+
+    async function fetchWithAuth(url, options = {}) {
+      options.headers = options.headers || {};
+      if (currentToken) {
+        options.headers['Authorization'] = `Bearer ${currentToken}`;
+      }
+      return fetch(url, options);
+    }
+
+    // Refresh Server Stats & Caches
     async function loadStats() {
       try {
         const res = await fetch('/api/info');
         const data = await res.json();
-        document.getElementById('db-engine').textContent = data.database.engine;
+        
+        document.getElementById('tls-badge').textContent = data.tls_enabled ? '🔒 TLS/HTTPS Active' : '🔓 Plain TCP (HTTP)';
+        document.getElementById('tls-badge').className = data.tls_enabled ? 'badge badge-sec online' : 'badge badge-sec';
+
         document.getElementById('pool-workers').textContent = `${data.thread_pool.max_workers} threads`;
         document.getElementById('req-count').textContent = data.thread_pool.total_processed_requests;
+
+        // Rate limiter info
+        const rl = data.rate_limiter;
+        document.getElementById('rate-limit-info').textContent = `${rl.remaining} / ${rl.limit} (Used: ${rl.current_window_requests})`;
+
+        // Cache info
+        const cache = data.caching;
+        document.getElementById('l1-hits').textContent = `Hits: ${cache.l1_application.hits} (${cache.l1_application.hit_rate_pct}%)`;
+        document.getElementById('l2-engine').textContent = cache.l2_redis.engine;
+        document.getElementById('l2-hits').textContent = `Hits: ${cache.l2_redis.hits} (${cache.l2_redis.hit_rate_pct}%)`;
+        document.getElementById('db-engine-name').textContent = data.database.engine;
+        document.getElementById('db-queries').textContent = `DB Queries: ${cache.database_queries_executed}`;
       } catch (e) {
         console.error(e);
       }
@@ -90,24 +245,34 @@
     async function loadUsers() {
       try {
         const res = await fetch('/api/users');
+        const etag = res.headers.get('ETag');
+        if (etag) lastETag = etag;
+
         const data = await res.json();
         const list = document.getElementById('users-list');
         list.innerHTML = '';
 
+        if (data.cache_tier_hit) {
+          const sourceEl = document.getElementById('last-cache-source');
+          sourceEl.textContent = data.cache_tier_hit;
+          sourceEl.className = data.cache_tier_hit.includes('CACHE') ? 'value online' : 'value warn-val';
+        }
+
         if (!data.users || data.users.length === 0) {
-          list.innerHTML = '<li class="empty-state">No users found in database. Add one above!</li>';
+          list.innerHTML = '<li class="empty-state">No users found in database.</li>';
           return;
         }
 
         data.users.forEach(u => {
           const li = document.createElement('li');
           li.className = 'user-item';
+          const roleBadge = u.role === 'admin' ? '<span class="role-tag admin">Admin</span>' : '<span class="role-tag user">User</span>';
           li.innerHTML = `
             <div class="user-info">
-              <strong>#${u.id} ${u.name}</strong>
-              <small>${u.email} &bull; ${u.created_at || 'Just now'}</small>
+              <strong>#${u.id} ${u.name}</strong> ${roleBadge}
+              <small>${u.email} &bull; ${u.created_at || 'Recently'}</small>
             </div>
-            <button class="btn delete-btn" onclick="deleteUser(${u.id})">Delete</button>
+            <button class="btn delete-btn" onclick="deleteUser(${u.id})">Delete (Admin)</button>
           `;
           list.appendChild(li);
         });
@@ -116,48 +281,147 @@
       }
     }
 
-    // Add user
-    document.getElementById('user-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('user-name').value.trim();
-      const email = document.getElementById('user-email').value.trim();
-      output.textContent = `Adding user: ${name} (${email})...`;
-
+    // Quick Login Helper
+    async function loginWithCredentials(email, password) {
+      output.textContent = `Authenticating as ${email}...`;
       try {
-        const res = await fetch('/api/users', {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email }),
+          body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
-        output.textContent = JSON.stringify(data, null, 2);
-        document.getElementById('user-name').value = '';
-        document.getElementById('user-email').value = '';
-        loadUsers();
-        loadStats();
-      } catch (err) {
-        output.textContent = 'Error: ' + err.message;
-      }
-    });
-
-    // Delete user
-    async function deleteUser(id) {
-      output.textContent = `Deleting user ID: ${id}...`;
-      try {
-        const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        output.textContent = JSON.stringify(data, null, 2);
-        loadUsers();
+        if (res.ok) {
+          setAuth(data.access_token, data.user.role, data.user.email);
+          output.textContent = `[200 OK] Logged in successfully!\nJWT Claims:\n` + JSON.stringify(data.user, null, 2);
+        } else {
+          output.textContent = `[${res.status} Error] ` + JSON.stringify(data, null, 2);
+        }
         loadStats();
       } catch (err) {
         output.textContent = 'Error: ' + err.message;
       }
     }
 
-    // Concurrency load test
+    document.getElementById('btn-login-admin').addEventListener('click', () => {
+      loginWithCredentials('admin@example.com', 'AdminPass123!');
+    });
+
+    document.getElementById('btn-login-user').addEventListener('click', () => {
+      loginWithCredentials('alice@example.com', 'AlicePass123!');
+    });
+
+    btnLogout.addEventListener('click', () => {
+      clearAuth();
+      output.textContent = 'Logged out. Current role is now Guest.';
+    });
+
+    // Custom Login / Register
+    document.getElementById('auth-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+      loginWithCredentials(email, password);
+    });
+
+    document.getElementById('btn-submit-register').addEventListener('click', async () => {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+      if (!email || !password) {
+        alert('Please provide an email and password to register.');
+        return;
+      }
+      const name = email.split('@')[0];
+      output.textContent = `Registering new account: ${email}...`;
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: 'user' }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setAuth(data.access_token, data.user.role, data.user.email);
+          output.textContent = `[201 Created] Registered & Logged in:\n` + JSON.stringify(data, null, 2);
+          loadUsers();
+        } else {
+          output.textContent = `[${res.status} Error] ` + JSON.stringify(data, null, 2);
+        }
+        loadStats();
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // Add User (Authorized Action)
+    document.getElementById('user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('user-name').value.trim();
+      const email = document.getElementById('user-email').value.trim();
+      const password = document.getElementById('user-password').value.trim();
+      const role = document.getElementById('user-role').value;
+
+      output.textContent = `Adding user with Bearer token...`;
+      try {
+        const res = await fetchWithAuth('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role }),
+        });
+        const data = await res.json();
+        output.textContent = `[${res.status} ${res.statusText}]\n` + JSON.stringify(data, null, 2);
+        if (res.ok) {
+          document.getElementById('user-name').value = '';
+          document.getElementById('user-email').value = '';
+          document.getElementById('user-password').value = '';
+          loadUsers();
+          loadStats();
+        }
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // Delete User (Admin Required)
+    async function deleteUser(id) {
+      output.textContent = `Attempting DELETE /api/users/${id} (Requires Admin Role)...`;
+      try {
+        const res = await fetchWithAuth(`/api/users/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        output.textContent = `[${res.status} ${res.statusText}]\n` + JSON.stringify(data, null, 2);
+        if (res.ok) {
+          loadUsers();
+          loadStats();
+        }
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    // Flush Cache
+    document.getElementById('btn-flush-cache').addEventListener('click', async () => {
+      output.textContent = 'Flushing L1 Application and L2 Redis caches...';
+      try {
+        const res = await fetch('/api/cache/flush', { method: 'POST' });
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+        loadStats();
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // Copy token
+    document.getElementById('btn-copy-token').addEventListener('click', () => {
+      if (!currentToken) return alert('No active token to copy.');
+      navigator.clipboard.writeText(currentToken);
+      alert('JWT Token copied to clipboard!');
+    });
+
+    // Concurrency & Cache Stress Test
     document.getElementById('btn-load-test').addEventListener('click', async () => {
       const TOTAL = 20;
-      output.textContent = `Firing ${TOTAL} concurrent HTTP requests to Thread Pool...`;
+      output.textContent = `Firing ${TOTAL} concurrent HTTP requests to test Thread Pool & Caching tiers...`;
       const progressBox = document.getElementById('test-progress');
       const progressFill = document.getElementById('progress-fill');
       const testStatus = document.getElementById('test-status');
@@ -168,11 +432,14 @@
 
       const startTime = performance.now();
       let completed = 0;
+      const sources = {};
 
-      const promises = Array.from({ length: TOTAL }, async (_, i) => {
+      const promises = Array.from({ length: TOTAL }, async () => {
         try {
-          const res = await fetch('/api/info');
-          await res.json();
+          const res = await fetch('/api/users');
+          const data = await res.json();
+          const src = data.cache_tier_hit || 'UNKNOWN';
+          sources[src] = (sources[src] || 0) + 1;
         } catch (e) {}
         completed++;
         progressFill.style.width = `${(completed / TOTAL) * 100}%`;
@@ -181,16 +448,18 @@
 
       await Promise.all(promises);
       const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
-      output.textContent = `Successfully processed ${TOTAL} concurrent requests via Thread Pool in ${elapsed}s!`;
-      loadStats();
-    });
-
-    document.getElementById('btn-refresh-stats').addEventListener('click', () => {
+      output.textContent = `Finished ${TOTAL} concurrent requests in ${elapsed}s!\nCache Breakdown:\n` + JSON.stringify(sources, null, 2);
       loadStats();
       loadUsers();
     });
 
-    // Initial load
+    document.getElementById('btn-refresh-users').addEventListener('click', () => {
+      loadUsers();
+      loadStats();
+    });
+
+    // Initialize
+    updateAuthUI();
     loadStats();
     loadUsers();
   </script>
