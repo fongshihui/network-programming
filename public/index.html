@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Programming - HTTP & Database Server</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">Architecture: HTTP &rarr; Thread Pool &rarr; MySQL</div>
+      <h1>Network Programming Server</h1>
+      <p class="subtitle">Low-level TCP Socket &bull; Concurrency Pool &bull; Database Integration</p>
+    </header>
+
+    <!-- Architecture & Status -->
+    <section class="card">
+      <h2>Server & Concurrency Metrics</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="label">Database Engine</span>
+          <span id="db-engine" class="value online">Loading...</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Thread Pool Size</span>
+          <span id="pool-workers" class="value">Loading...</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Processed Requests</span>
+          <span id="req-count" class="value">Loading...</span>
+        </div>
+      </div>
+      <div style="margin-top: 1rem; text-align: right;">
+        <button id="btn-refresh-stats" class="btn secondary">Refresh Metrics</button>
+      </div>
+    </section>
+
+    <!-- Phase 2: Database Operations (CRUD) -->
+    <section class="card">
+      <h2>Phase 2: Database Management (Users Table)</h2>
+      <form id="user-form" class="user-form">
+        <input type="text" id="user-name" placeholder="Full Name (e.g. Alice)" required />
+        <input type="email" id="user-email" placeholder="Email (e.g. alice@example.com)" required />
+        <button type="submit" class="btn primary">Add to Database</button>
+      </form>
+
+      <div class="users-section">
+        <h3>Current Database Records</h3>
+        <ul id="users-list" class="users-list">
+          <li class="empty-state">Loading users...</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Phase 3: Concurrency Stress Test -->
+    <section class="card">
+      <h2>Phase 3: Concurrency Stress Test</h2>
+      <p class="help-text">
+        Fires 20 concurrent HTTP requests simultaneously over TCP to test thread pool concurrency and database throughput.
+      </p>
+      <div class="btn-group">
+        <button id="btn-load-test" class="btn warn">Run 20 Concurrent Requests</button>
+      </div>
+      <div id="test-progress" class="test-progress" style="display: none;">
+        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+        <span id="test-status">Running...</span>
+      </div>
+      <pre id="output">Click a button above or submit a form to test the server...</pre>
+    </section>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    // Fetch server status
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/info');
+        const data = await res.json();
+        document.getElementById('db-engine').textContent = data.database.engine;
+        document.getElementById('pool-workers').textContent = `${data.thread_pool.max_workers} threads`;
+        document.getElementById('req-count').textContent = data.thread_pool.total_processed_requests;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Fetch and display users
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        const data = await res.json();
+        const list = document.getElementById('users-list');
+        list.innerHTML = '';
+
+        if (!data.users || data.users.length === 0) {
+          list.innerHTML = '<li class="empty-state">No users found in database. Add one above!</li>';
+          return;
+        }
+
+        data.users.forEach(u => {
+          const li = document.createElement('li');
+          li.className = 'user-item';
+          li.innerHTML = `
+            <div class="user-info">
+              <strong>#${u.id} ${u.name}</strong>
+              <small>${u.email} &bull; ${u.created_at || 'Just now'}</small>
+            </div>
+            <button class="btn delete-btn" onclick="deleteUser(${u.id})">Delete</button>
+          `;
+          list.appendChild(li);
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Add user
+    document.getElementById('user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('user-name').value.trim();
+      const email = document.getElementById('user-email').value.trim();
+      output.textContent = `Adding user: ${name} (${email})...`;
+
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email }),
+        });
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+        document.getElementById('user-name').value = '';
+        document.getElementById('user-email').value = '';
+        loadUsers();
+        loadStats();
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    // Delete user
+    async function deleteUser(id) {
+      output.textContent = `Deleting user ID: ${id}...`;
+      try {
+        const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+        loadUsers();
+        loadStats();
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    // Concurrency load test
+    document.getElementById('btn-load-test').addEventListener('click', async () => {
+      const TOTAL = 20;
+      output.textContent = `Firing ${TOTAL} concurrent HTTP requests to Thread Pool...`;
+      const progressBox = document.getElementById('test-progress');
+      const progressFill = document.getElementById('progress-fill');
+      const testStatus = document.getElementById('test-status');
+
+      progressBox.style.display = 'block';
+      progressFill.style.width = '0%';
+      testStatus.textContent = `0 / ${TOTAL} completed`;
+
+      const startTime = performance.now();
+      let completed = 0;
+
+      const promises = Array.from({ length: TOTAL }, async (_, i) => {
+        try {
+          const res = await fetch('/api/info');
+          await res.json();
+        } catch (e) {}
+        completed++;
+        progressFill.style.width = `${(completed / TOTAL) * 100}%`;
+        testStatus.textContent = `${completed} / ${TOTAL} completed`;
+      });
+
+      await Promise.all(promises);
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      output.textContent = `Successfully processed ${TOTAL} concurrent requests via Thread Pool in ${elapsed}s!`;
+      loadStats();
+    });
+
+    document.getElementById('btn-refresh-stats').addEventListener('click', () => {
+      loadStats();
+      loadUsers();
+    });
+
+    // Initial load
+    loadStats();
+    loadUsers();
+  </script>
+</body>
+</html>
